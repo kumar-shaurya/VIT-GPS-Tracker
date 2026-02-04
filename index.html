@@ -1,64 +1,311 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>VIT Chennai Live GPS</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL | GPS Command Center</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;600&display=swap" rel="stylesheet">
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; text-align: center; }
-        .header { background: #003366; color: white; padding: 15px; margin-bottom: 20px; }
-        #map { height: 500px; width: 90%; margin: 0 auto; border-radius: 15px; border: 4px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        .stats { display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
-        .box { background: white; padding: 15px; border-radius: 10px; min-width: 120px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .val { font-size: 1.4em; font-weight: bold; color: #003366; display: block; }
-        .lbl { font-size: 0.8em; color: #777; }
+        :root {
+            --primary: #00ff88;
+            --danger: #ff4444;
+            --bg: #0a0a0c;
+            --card: #16161a;
+            --border: #2a2a30;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 25px;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+        }
+
+        .brand {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--primary);
+            letter-spacing: -1px;
+        }
+        .brand span { color: white; font-weight: 300; }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: #1f1f23;
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .control-group { display: flex; align-items: center; gap: 10px; }
+        input[type=range] { cursor: pointer; accent-color: var(--primary); }
+
+        button {
+            background: var(--primary);
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+
+        button:hover { opacity: 0.8; transform: translateY(-1px); }
+        .btn-alt { background: #333; color: white; }
+        .btn-off { background: var(--danger); color: white; }
+        .btn-deactivate { background: #444; color: #ff4444; border: 1px solid #ff4444; }
+
+        #map { flex-grow: 1; width: 100%; background: #000; cursor: crosshair; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding: 20px;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-card {
+            background: #1c1c21;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .label {
+            color: #666;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .value {
+            display: block;
+            font-size: 1.3rem;
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 5px;
+        }
+
+        .status-online { color: var(--primary); }
+        .status-danger { color: var(--danger); animation: pulse 1.5s infinite; }
+        .alert-bg { border-color: var(--danger) !important; background: #2a1414 !important; }
+
+        @keyframes pulse { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
 
-    <div class="header"><h1>VIT Chennai Live Tracker</h1></div>
+    <div class="top-bar">
+        <div class="brand">SENTINEL<span>.GPS</span></div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <span class="label">Radius</span>
+                <input type="range" id="radius-slider" min="10" max="1000" value="150">
+                <span id="radius-display" style="color:var(--primary); font-family: monospace; min-width: 40px;">150m</span>
+            </div>
+            <button id="fence-toggle-btn">Activate Fence</button>
+            <div style="width: 1px; height: 20px; background: #444; margin: 0 5px;"></div>
+            <button id="toggle-path-btn">Path: ON</button>
+            <button id="clear-path-btn" class="btn-alt">Clear Path</button>
+        </div>
+
+        <div class="control-group">
+            <div id="heartbeat" style="height:10px; width:10px; border-radius:50%; background:#333;"></div>
+            <span id="status-text" class="label">Hardware Offline</span>
+        </div>
+    </div>
+
     <div id="map"></div>
 
-    <div class="stats">
-        <div class="box"><span class="lbl">Satellites</span><span id="sats" class="val">--</span></div>
-        <div class="box"><span class="lbl">Latitude</span><span id="lat" class="val">--</span></div>
-        <div class="box"><span class="lbl">Longitude</span><span id="lng" class="val">--</span></div>
+    <div class="dashboard">
+        <div class="stat-card">
+            <span class="label">Live Position</span>
+            <span id="val-coords" class="value">Searching...</span>
+        </div>
+        <div class="stat-card" id="fence-card">
+            <span class="label">Geofence Compliance</span>
+            <span id="val-fence" class="value" style="color:#444">INACTIVE</span>
+        </div>
+        <div class="stat-card">
+            <span class="label">Satellites</span>
+            <span id="val-sats" class="value">00</span>
+        </div>
+        <div class="stat-card">
+            <span class="label">Last Sync</span>
+            <span id="val-time" class="value">--:--:--</span>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCcx6Cmwsrk1FWHf4Dzz1-yAfLR8jD13RY",
-            authDomain: "vit-gps-tracker.firebaseapp.com",
-            databaseURL: "https://vit-gps-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "vit-gps-tracker",
-            storageBucket: "vit-gps-tracker.firebasestorage.app",
-            messagingSenderId: "536385712825",
-            appId: "1:536385712825:web:07512a22925f21b91e2168"
+            databaseURL: "https://vit-gps-tracker-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database().ref('gps');
 
-        // Set map to VIT Chennai Academic Blocks
-        var map = L.map('map').setView([12.8442, 80.1517], 17);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        var marker = L.marker([12.8442, 80.1517]).addTo(map).bindPopup("Current Location").openPopup();
+        let fenceCenter = null; 
+        let fenceRadius = 150;
+        let pathActive = true;
+        let firstLock = true;
+        let fenceIsOn = false;
+        
+        const alertAudio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
+        var map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+        var geofence = L.circle([0, 0], {
+            color: '#00ff88',
+            fillColor: '#00ff88',
+            fillOpacity: 0.1,
+            radius: fenceRadius,
+            weight: 2,
+            opacity: 0
+        }).addTo(map);
+
+        var marker = L.marker([0, 0], { opacity: 0 }).addTo(map);
+        var breadcrumbs = L.polyline([], { color: '#00ff88', weight: 2, opacity: 0.6 }).addTo(map);
+
+        // --- CORE FUNCTIONS ---
+
+        function setFence(latlng) {
+            fenceCenter = latlng;
+            geofence.setLatLng(fenceCenter);
+            geofence.setStyle({ opacity: 1 });
+            fenceIsOn = true;
+            
+            const btn = document.getElementById('fence-toggle-btn');
+            btn.innerText = "Deactivate Fence";
+            btn.classList.add('btn-deactivate');
+            
+            updateFenceStatus();
+        }
+
+        function disableFence() {
+            fenceIsOn = false;
+            fenceCenter = null;
+            geofence.setStyle({ opacity: 0 });
+            
+            const btn = document.getElementById('fence-toggle-btn');
+            btn.innerText = "Activate Fence";
+            btn.classList.remove('btn-deactivate');
+
+            const fenceText = document.getElementById('val-fence');
+            const fenceCard = document.getElementById('fence-card');
+            fenceText.innerText = "INACTIVE";
+            fenceText.style.color = "#444";
+            fenceCard.classList.remove('alert-bg');
+        }
+
+        function updateFenceStatus() {
+            if (!fenceIsOn || !fenceCenter) return;
+
+            const currentPos = marker.getLatLng();
+            const distance = map.distance(currentPos, fenceCenter);
+            
+            const fenceText = document.getElementById('val-fence');
+            const fenceCard = document.getElementById('fence-card');
+
+            if (distance > fenceRadius) {
+                fenceText.innerText = "TRESPASS DETECTED";
+                fenceText.className = "value status-danger";
+                fenceCard.classList.add('alert-bg');
+                geofence.setStyle({ color: '#ff4444', fillColor: '#ff4444' });
+                alertAudio.play().catch(e => {});
+            } else {
+                fenceText.innerText = "SECURE / INSIDE";
+                fenceText.className = "value status-online";
+                fenceCard.classList.remove('alert-bg');
+                geofence.setStyle({ color: '#00ff88', fillColor: '#00ff88' });
+            }
+        }
+
+        // --- LISTENERS ---
+
+        document.getElementById('fence-toggle-btn').onclick = function() {
+            if (fenceIsOn) {
+                disableFence();
+            } else {
+                const mPos = marker.getLatLng();
+                if (mPos.lat !== 0) setFence(mPos);
+            }
+        };
+
+        map.on('click', (e) => {
+            setFence(e.latlng);
+        });
+
+        document.getElementById('radius-slider').oninput = (e) => {
+            fenceRadius = parseInt(e.target.value);
+            document.getElementById('radius-display').innerText = fenceRadius + "m";
+            geofence.setRadius(fenceRadius);
+            if(fenceIsOn) updateFenceStatus();
+        };
+
+        document.getElementById('toggle-path-btn').onclick = function() {
+            pathActive = !pathActive;
+            this.innerText = pathActive ? "Path: ON" : "Path: OFF";
+            this.className = pathActive ? "" : "btn-off";
+        };
+
+        document.getElementById('clear-path-btn').onclick = () => breadcrumbs.setLatLngs([]);
+
+        // --- FIREBASE SYNC ---
         db.on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-                document.getElementById('lat').innerText = data.lat.toFixed(6);
-                document.getElementById('lng').innerText = data.lng.toFixed(6);
-                document.getElementById('sats').innerText = data.sats;
+            if (!data) return;
 
-                const newPos = [data.lat, data.lng];
-                marker.setLatLng(newPos);
-                map.panTo(newPos);
+            const pos = [data.lat, data.lng];
+            
+            if (firstLock) {
+                map.setView(pos, 17);
+                marker.setOpacity(1);
+                firstLock = false;
             }
+
+            document.getElementById('val-coords').innerText = `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`;
+            document.getElementById('val-sats').innerText = data.sats.toString().padStart(2, '0');
+            document.getElementById('val-time').innerText = new Date().toLocaleTimeString();
+            
+            document.getElementById('heartbeat').style.background = '#00ff88';
+            document.getElementById('status-text').innerText = "Live";
+
+            marker.setLatLng(pos);
+            if (pathActive) breadcrumbs.addLatLng(pos);
+            
+            if(fenceIsOn) updateFenceStatus();
         });
     </script>
 </body>
-
 </html>
