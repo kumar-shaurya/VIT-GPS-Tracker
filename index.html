@@ -1,312 +1,410 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#00ff88" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Vit-GPS Command Center</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&family=Inter:wght@600;800&display=swap" rel="stylesheet">
-    
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&family=Inter:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <style>
-        :root {
-            --primary: #00ff88; /* Bright Neon Green */
-            --danger: #ff4444;
-            --bg: #0a0a0c;
-            --card: #1c1c21;
-            --border: #33333b;
-            --text-main: #ffffff;
-            --text-dim: #bbbbbb;
-        }
+      :root {
+        --primary: #00ff88; /* Bright Neon Green */
+        --danger: #ff4444;
+        --bg: #0a0a0c;
+        --card: #1c1c21;
+        --border: #33333b;
+        --text-main: #ffffff;
+        --text-dim: #bbbbbb;
+      }
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            background: var(--bg);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
 
-        /* High Visibility Header */
-        .top-bar {
-            flex-shrink: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 15px;
-            background: #000;
-            border-bottom: 2px solid var(--primary);
-            z-index: 2000;
-        }
+      /* High Visibility Header */
+      .top-bar {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 15px;
+        background: #000;
+        border-bottom: 2px solid var(--primary);
+        z-index: 2000;
+      }
 
-        .brand {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 800;
-            color: var(--primary);
-            font-size: 1.2rem;
-            text-transform: uppercase;
-        }
+      .brand {
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 800;
+        color: var(--primary);
+        font-size: 1.2rem;
+        text-transform: uppercase;
+      }
 
-        #map {
-            flex: 1;
-            width: 100%;
-            background: #eee; /* Light background for map loading */
-            z-index: 1;
-        }
+      #map {
+        flex: 1;
+        width: 100%;
+        background: #eee; /* Light background for map loading */
+        z-index: 1;
+      }
 
-        /* Controls - Higher Contrast */
-        .controls {
-            position: absolute;
-            bottom: 145px;
-            left: 10px;
-            right: 10px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px solid var(--primary);
-            z-index: 1000;
-            box-shadow: 0 0 20px rgba(0,255,136,0.2);
-        }
+      /* Controls - Higher Contrast */
+      .controls {
+        position: absolute;
+        bottom: 145px;
+        left: 10px;
+        right: 10px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(10px);
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--primary);
+        z-index: 1000;
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+      }
 
-        .control-group { display: flex; align-items: center; gap: 8px; }
-        
-        input[type=range] { 
-            accent-color: var(--primary); 
-            width: 80px; 
-        }
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-        button {
-            background: var(--primary);
-            border: none;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-weight: 800;
-            font-size: 0.75rem;
-            cursor: pointer;
-            text-transform: uppercase;
-            color: #000; /* Black text on green button for max contrast */
-        }
+      input[type="range"] {
+        accent-color: var(--primary);
+        width: 80px;
+      }
 
-        .btn-alt { background: #444; color: white; }
-        .btn-deactivate { background: var(--danger); color: white; }
+      button {
+        background: var(--primary);
+        border: none;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        cursor: pointer;
+        text-transform: uppercase;
+        color: #000; /* Black text on green button for max contrast */
+      }
 
-        /* Dashboard - High Contrast Fix */
+      .btn-alt {
+        background: #444;
+        color: white;
+      }
+      .btn-deactivate {
+        background: var(--danger);
+        color: white;
+      }
+
+      /* Dashboard - High Contrast Fix */
+      .dashboard {
+        flex-shrink: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 12px;
+        background: #000;
+        border-top: 2px solid var(--border);
+        z-index: 2000;
+      }
+
+      .stat-card {
+        background: var(--card);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        text-align: center;
+      }
+
+      .label {
+        color: var(--primary); /* Labels now bright green */
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .value {
+        display: block;
+        font-size: 1rem;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        color: var(--text-main); /* Values are pure white */
+      }
+
+      @media (max-width: 600px) {
         .dashboard {
-            flex-shrink: 0;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            padding: 12px;
-            background: #000;
-            border-top: 2px solid var(--border);
-            z-index: 2000;
+          grid-template-columns: repeat(2, 1fr);
         }
-
-        .stat-card {
-            background: var(--card);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            text-align: center;
+        .controls {
+          bottom: 160px;
+          flex-wrap: wrap;
+          justify-content: center;
         }
+      }
 
-        .label {
-            color: var(--primary); /* Labels now bright green */
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            font-weight: 800;
-            display: block;
-            margin-bottom: 4px;
+      .status-danger {
+        color: var(--danger) !important;
+        animation: pulse 1s infinite;
+      }
+      .alert-bg {
+        border-color: var(--danger) !important;
+        background: #331111 !important;
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.3;
         }
-
-        .value {
-            display: block;
-            font-size: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            color: var(--text-main); /* Values are pure white */
-        }
-
-        @media (max-width: 600px) {
-            .dashboard { grid-template-columns: repeat(2, 1fr); }
-            .controls { bottom: 160px; flex-wrap: wrap; justify-content: center; }
-        }
-
-        .status-danger { color: var(--danger) !important; animation: pulse 1s infinite; }
-        .alert-bg { border-color: var(--danger) !important; background: #331111 !important; }
-        @keyframes pulse { 50% { opacity: 0.3; } }
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="top-bar">
-        <div class="brand">VIT<span>.GPS</span></div>
-        <div class="control-group">
-            <div id="heartbeat" style="height:10px; width:10px; border-radius:50%; background:#444;"></div>
-            <span id="status-text" class="label" style="margin:0;">OFFLINE</span>
-        </div>
+      <div class="brand">VIT<span>.GPS</span></div>
+      <div class="control-group">
+        <div
+          id="heartbeat"
+          style="
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            background: #444;
+          "
+        ></div>
+        <span id="status-text" class="label" style="margin: 0">OFFLINE</span>
+      </div>
     </div>
 
     <div id="map"></div>
 
     <div class="controls">
-        <div class="control-group">
-            <span class="label" style="margin:0">RAD</span>
-            <input type="range" id="radius-slider" min="10" max="1000" value="150">
-            <span id="radius-display" style="color:var(--primary); font-weight:bold;">150m</span>
-        </div>
-        <button id="fence-toggle-btn">Activate</button>
-        <button id="toggle-path-btn">Path: ON</button>
-        <button id="clear-path-btn" class="btn-alt">Clear</button>
+      <div class="control-group">
+        <span class="label" style="margin: 0">RAD</span>
+        <input
+          type="range"
+          id="radius-slider"
+          min="10"
+          max="1000"
+          value="150"
+        />
+        <span
+          id="radius-display"
+          style="color: var(--primary); font-weight: bold"
+          >150m</span
+        >
+      </div>
+      <button id="fence-toggle-btn">Activate</button>
+      <button id="toggle-path-btn">Path: ON</button>
+      <button id="clear-path-btn" class="btn-alt">Clear</button>
     </div>
 
     <div class="dashboard">
-        <div class="stat-card">
-            <span class="label">Position</span>
-            <span id="val-coords" class="value">---,---</span>
-        </div>
-        <div class="stat-card" id="fence-card">
-            <span class="label">Status</span>
-            <span id="val-fence" class="value" style="color:#666">IDLE</span>
-        </div>
-        <div class="stat-card">
-            <span class="label">Sats</span>
-            <span id="val-sats" class="value">0</span>
-        </div>
-        <div class="stat-card">
-            <span class="label">Time</span>
-            <span id="val-time" class="value">--:--</span>
-        </div>
+      <div class="stat-card">
+        <span class="label">Position</span>
+        <span id="val-coords" class="value">---,---</span>
+      </div>
+      <div class="stat-card" id="fence-card">
+        <span class="label">Status</span>
+        <span id="val-fence" class="value" style="color: #666">IDLE</span>
+      </div>
+      <div class="stat-card">
+        <span class="label">Sats</span>
+        <span id="val-sats" class="value">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="label">Time</span>
+        <span id="val-time" class="value">--:--</span>
+      </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCcx6Cmwsrk1FWHf4Dzz1-yAfLR8jD13RY",
-            databaseURL: "https://vit-gps-tracker-default-rtdb.asia-southeast1.firebasedatabase.app"
-        };
+      const firebaseConfig = {
+        apiKey: "AIzaSyCcx6Cmwsrk1FWHf4Dzz1-yAfLR8jD13RY",
+        databaseURL:
+          "https://vit-gps-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+      };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('gps');
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database().ref("gps");
 
-        let fenceCenter = null; 
-        let fenceRadius = 150;
-        let pathActive = true;
-        let firstLock = true;
-        let fenceIsOn = false;
-        const alertAudio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+      let fenceCenter = null;
+      let fenceRadius = 150;
+      let pathActive = true;
+      let firstLock = true;
+      let fenceIsOn = false;
+      const alertAudio = new Audio(
+        "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
+      );
 
-        // Map setup with BRIGHTER tiles (Voyager)
-        var map = L.map('map', { zoomControl: false }).setView([12.8442, 80.1517], 17);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+      // Map setup with BRIGHTER tiles (Voyager)
+      var map = L.map("map", { zoomControl: false }).setView(
+        [12.8442, 80.1517],
+        17,
+      );
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        {
+          attribution: "&copy; OpenStreetMap",
+        },
+      ).addTo(map);
 
-        var geofence = L.circle([0, 0], {
-            color: '#00ff88', fillColor: '#00ff88', fillOpacity: 0.2,
-            radius: fenceRadius, weight: 3, opacity: 0
-        }).addTo(map);
+      var geofence = L.circle([0, 0], {
+        color: "#00ff88",
+        fillColor: "#00ff88",
+        fillOpacity: 0.2,
+        radius: fenceRadius,
+        weight: 3,
+        opacity: 0,
+      }).addTo(map);
 
-        var marker = L.marker([0, 0], { opacity: 0 }).addTo(map);
-        var breadcrumbs = L.polyline([], { color: '#00cc66', weight: 4, opacity: 0.8 }).addTo(map);
+      var marker = L.marker([0, 0], { opacity: 0 }).addTo(map);
+      var breadcrumbs = L.polyline([], {
+        color: "#00cc66",
+        weight: 4,
+        opacity: 0.8,
+      }).addTo(map);
 
-        function setFence(latlng) {
-            fenceCenter = latlng;
-            geofence.setLatLng(fenceCenter);
-            geofence.setStyle({ opacity: 1 });
-            fenceIsOn = true;
-            const btn = document.getElementById('fence-toggle-btn');
-            btn.innerText = "Deactivate";
-            btn.classList.add('btn-deactivate');
-            updateFenceStatus();
+      function setFence(latlng) {
+        fenceCenter = latlng;
+        geofence.setLatLng(fenceCenter);
+        geofence.setStyle({ opacity: 1 });
+        fenceIsOn = true;
+        const btn = document.getElementById("fence-toggle-btn");
+        btn.innerText = "Deactivate";
+        btn.classList.add("btn-deactivate");
+        updateFenceStatus();
+      }
+
+      function disableFence() {
+        fenceIsOn = false;
+        fenceCenter = null;
+        geofence.setStyle({ opacity: 0 });
+        const btn = document.getElementById("fence-toggle-btn");
+        btn.innerText = "Activate";
+        btn.classList.remove("btn-deactivate");
+        document.getElementById("val-fence").innerText = "IDLE";
+        document.getElementById("val-fence").style.color = "#666";
+        document.getElementById("fence-card").classList.remove("alert-bg");
+      }
+
+      function updateFenceStatus() {
+        if (!fenceIsOn || !fenceCenter) return;
+        const currentPos = marker.getLatLng();
+        const distance = map.distance(currentPos, fenceCenter);
+        const fenceText = document.getElementById("val-fence");
+        const fenceCard = document.getElementById("fence-card");
+
+        if (distance > fenceRadius) {
+          fenceText.innerText = "OUT";
+          fenceText.className = "value status-danger";
+          fenceCard.classList.add("alert-bg");
+          geofence.setStyle({ color: "#ff4444", fillColor: "#ff4444" });
+          alertAudio.play().catch((e) => {});
+        } else {
+          fenceText.innerText = "IN";
+          fenceText.className = "value status-online";
+          fenceCard.classList.remove("alert-bg");
+          geofence.setStyle({ color: "#00ff88", fillColor: "#00ff88" });
         }
+      }
 
-        function disableFence() {
-            fenceIsOn = false;
-            fenceCenter = null;
-            geofence.setStyle({ opacity: 0 });
-            const btn = document.getElementById('fence-toggle-btn');
-            btn.innerText = "Activate";
-            btn.classList.remove('btn-deactivate');
-            document.getElementById('val-fence').innerText = "IDLE";
-            document.getElementById('val-fence').style.color = "#666";
-            document.getElementById('fence-card').classList.remove('alert-bg');
+      document.getElementById("fence-toggle-btn").onclick = function () {
+        if (fenceIsOn) disableFence();
+        else if (marker.options.opacity !== 0) setFence(marker.getLatLng());
+      };
+
+      map.on("click", (e) => setFence(e.latlng));
+
+      document.getElementById("radius-slider").oninput = (e) => {
+        fenceRadius = parseInt(e.target.value);
+        document.getElementById("radius-display").innerText = fenceRadius + "m";
+        geofence.setRadius(fenceRadius);
+        if (fenceIsOn) updateFenceStatus();
+      };
+
+      document.getElementById("toggle-path-btn").onclick = function () {
+        pathActive = !pathActive;
+        this.innerText = pathActive ? "Path: ON" : "Path: OFF";
+        this.className = pathActive ? "" : "btn-off";
+      };
+
+      document.getElementById("clear-path-btn").onclick = () =>
+        breadcrumbs.setLatLngs([]);
+
+      db.on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+        const pos = [data.lat, data.lng];
+        if (firstLock) {
+          map.setView(pos, 17);
+          marker.setOpacity(1);
+          firstLock = false;
         }
+        document.getElementById("val-coords").innerText =
+          `${data.lat.toFixed(3)},${data.lng.toFixed(3)}`;
+        document.getElementById("val-sats").innerText = data.sats;
+        document.getElementById("val-time").innerText =
+          new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        document.getElementById("heartbeat").style.background = "#00ff88";
+        document.getElementById("heartbeat").style.boxShadow =
+          "0 0 10px #00ff88";
+        document.getElementById("status-text").innerText = "LIVE";
+        marker.setLatLng(pos);
+        if (pathActive) breadcrumbs.addLatLng(pos);
+        if (fenceIsOn) updateFenceStatus();
+      });
 
-        function updateFenceStatus() {
-            if (!fenceIsOn || !fenceCenter) return;
-            const currentPos = marker.getLatLng();
-            const distance = map.distance(currentPos, fenceCenter);
-            const fenceText = document.getElementById('val-fence');
-            const fenceCard = document.getElementById('fence-card');
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 300);
 
-            if (distance > fenceRadius) {
-                fenceText.innerText = "OUT";
-                fenceText.className = "value status-danger";
-                fenceCard.classList.add('alert-bg');
-                geofence.setStyle({ color: '#ff4444', fillColor: '#ff4444' });
-                alertAudio.play().catch(e => {});
-            } else {
-                fenceText.innerText = "IN";
-                fenceText.className = "value status-online";
-                fenceCard.classList.remove('alert-bg');
-                geofence.setStyle({ color: '#00ff88', fillColor: '#00ff88' });
-            }
-        }
-
-        document.getElementById('fence-toggle-btn').onclick = function() {
-            if (fenceIsOn) disableFence();
-            else if (marker.options.opacity !== 0) setFence(marker.getLatLng());
-        };
-
-        map.on('click', (e) => setFence(e.latlng));
-
-        document.getElementById('radius-slider').oninput = (e) => {
-            fenceRadius = parseInt(e.target.value);
-            document.getElementById('radius-display').innerText = fenceRadius + "m";
-            geofence.setRadius(fenceRadius);
-            if(fenceIsOn) updateFenceStatus();
-        };
-
-        document.getElementById('toggle-path-btn').onclick = function() {
-            pathActive = !pathActive;
-            this.innerText = pathActive ? "Path: ON" : "Path: OFF";
-            this.className = pathActive ? "" : "btn-off";
-        };
-
-        document.getElementById('clear-path-btn').onclick = () => breadcrumbs.setLatLngs([]);
-
-        db.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
-            const pos = [data.lat, data.lng];
-            if (firstLock) {
-                map.setView(pos, 17);
-                marker.setOpacity(1);
-                firstLock = false;
-            }
-            document.getElementById('val-coords').innerText = `${data.lat.toFixed(3)},${data.lng.toFixed(3)}`;
-            document.getElementById('val-sats').innerText = data.sats;
-            document.getElementById('val-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            document.getElementById('heartbeat').style.background = '#00ff88';
-            document.getElementById('heartbeat').style.boxShadow = '0 0 10px #00ff88';
-            document.getElementById('status-text').innerText = "LIVE";
-            marker.setLatLng(pos);
-            if (pathActive) breadcrumbs.addLatLng(pos);
-            if(fenceIsOn) updateFenceStatus();
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("sw.js")
+            .then((reg) => console.log("SW Registered"))
+            .catch((err) => console.log("SW Error", err));
         });
-        
-        setTimeout(() => { map.invalidateSize(); }, 300);
-    </script>
-</body>
-</html>
+      }
 
+      let deferredPrompt;
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log("App is ready to be installed");
+      });
+    </script>
+  </body>
+</html>
